@@ -77,16 +77,20 @@ func main() {
 
 	client := dynamodb.NewFromConfig(cfg)
 
-	log.Printf("Scanning...")
+	log.Printf("Scanning %s...", *tableName)
 	collectionsChan, recipesChan := AsyncScanTable(client, tableName, limitVal(limit))
 
 	users, collections := receiver(collectionsChan, recipesChan)
 	//spew.Dump(results)
 
 	log.Printf("Reconciling...")
+	//How many users do we have in total?
+	userCount := len(*users)
+	affectedCount := 0
 	//OK now let's find all users who have more than 2 collections....
 	for uid, userCollections := range *users {
 		if len(userCollections) > 2 {
+			affectedCount += 1
 			log.Printf("User with ID %d has %d collections:", uid, len(userCollections))
 			for _, c := range userCollections {
 				collectionContent := (*collections)[c.CollectionID]
@@ -94,4 +98,5 @@ func main() {
 			}
 		}
 	}
+	log.Printf("A total of %d users out of %d were affected, that's %.1f%%", affectedCount, userCount, (float64(affectedCount)/float64(userCount))*100)
 }
